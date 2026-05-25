@@ -1,9 +1,31 @@
 import os
+import threading
+from http.server import BaseHTTPRequestHandler, HTTPServer
+
 import telebot
 from telebot import types
 
 # Инициализация бота
 bot = telebot.TeleBot(os.environ.get("BOT_TOKEN", ""))
+
+# ── Minimal health-check HTTP server ─────────────────────────────────────────
+class HealthHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"OK")
+
+    def log_message(self, format, *args):  # silence request logs
+        pass
+
+def run_health_server():
+    port = int(os.environ.get("PORT", 8080))
+    server = HTTPServer(("0.0.0.0", port), HealthHandler)
+    server.serve_forever()
+
+# Start the health server in a background thread
+threading.Thread(target=run_health_server, daemon=True).start()
+# ─────────────────────────────────────────────────────────────────────────────
 
 # Реакция на команду /start
 @bot.message_handler(commands=['start'])
